@@ -39,7 +39,11 @@ def format_listing_summary(details: dict) -> str:
 
     price = details.get("price")
     if price is not None:
-        lines.append(f"💰 Price: {price} PLN")
+        lines.append(f"💰 Rent: {price} PLN")
+
+    czynsz = details.get("czynsz")
+    if czynsz is not None:
+        lines.append(f"🏢 Czynsz: {czynsz} PLN (extra, not used for filter)")
 
     return "\n".join(lines)
 

@@ -1,4 +1,4 @@
-from parser import district_match, parse_area, parse_price, text_contains_any
+from parser import district_match, parse_area, parse_rent_price, text_contains_any
 
 
 def matches_filters(text: str, filters: dict) -> tuple[bool, str]:
@@ -24,7 +24,7 @@ def matches_filters(text: str, filters: dict) -> tuple[bool, str]:
     min_price = filters.get("min_price")
     max_price = filters.get("max_price")
     if min_price is not None or max_price is not None:
-        price = parse_price(text, min_price, max_price)
+        price = parse_rent_price(text)
         if price is None:
             return False, "price not found"
         if min_price is not None and price < min_price:

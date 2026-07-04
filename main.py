@@ -61,6 +61,8 @@ def format_skip_details(text: str, filters: dict, reason: str) -> str:
     districts = filters.get("districts", [])
 
     price_label = details["price"] if details["price"] is not None else "not found"
+    czynsz_label = details.get("czynsz")
+    czynsz_line = f"  Czynsz: {czynsz_label} PLN (ignored for filter)\n" if czynsz_label else ""
     area_label = details["area"] if details["area"] is not None else "not found"
     district_label = details["district"] if details["district"] is not None else "not found"
 
@@ -78,7 +80,8 @@ def format_skip_details(text: str, filters: dict, reason: str) -> str:
 
     return (
         f"  Reason: {reason}\n"
-        f"  Price: {price_label} (need {price_need})\n"
+        f"  Rent: {price_label} (need {price_need})\n"
+        f"{czynsz_line}"
         f"  Area: {area_label} m² (need {area_need})\n"
         f"  District: {district_label} (need one of: {district_need})\n"
         f"  Preview: {preview}"
