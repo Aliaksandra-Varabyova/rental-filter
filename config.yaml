@@ -7,10 +7,7 @@ filters:
   currency: "PLN"
   districts:
     - "Żoliborz"
-    - "Zoliborz"
     - "Wola"
     - "Centrum"
-    - "Śródmieście"
-    - "Srodmiescie"
 
 lookback_minutes: 60

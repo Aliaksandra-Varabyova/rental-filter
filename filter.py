@@ -1,4 +1,4 @@
-from parser import parse_area, parse_price, text_contains_any
+from parser import district_match, parse_area, parse_price, text_contains_any
 
 
 def matches_filters(text: str, filters: dict) -> tuple[bool, str]:
@@ -10,7 +10,7 @@ def matches_filters(text: str, filters: dict) -> tuple[bool, str]:
         return False, "city mismatch"
 
     districts = filters.get("districts", [])
-    if districts and not text_contains_any(text, districts):
+    if districts and not district_match(text, districts):
         return False, "district mismatch"
 
     min_area = filters.get("min_area")

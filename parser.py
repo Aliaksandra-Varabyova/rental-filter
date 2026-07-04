@@ -26,8 +26,26 @@ PRICE_PATTERNS = [
 
 def normalize(text: str) -> str:
     folded = unicodedata.normalize("NFKD", text)
-    ascii_text = folded.encode("ascii", "ignore").decode("ascii")
-    return ascii_text.lower()
+    without_marks = "".join(
+        character for character in folded if not unicodedata.combining(character)
+    )
+    return without_marks.casefold()
+
+
+def keyword_in_text(text: str, keyword: str) -> bool:
+    if keyword.lower() in text.lower():
+        return True
+
+    normalized_keyword = normalize(keyword)
+    if not normalized_keyword:
+        return False
+
+    normalized_text = normalize(text)
+    if normalized_keyword in normalized_text:
+        return True
+
+    pattern = rf"(?<![\w]){re.escape(normalized_keyword)}(?![\w])"
+    return re.search(pattern, normalized_text, re.UNICODE) is not None
 
 
 def _parse_number(value: str) -> int:
@@ -64,11 +82,89 @@ def parse_area(text: str) -> float | None:
     return None
 
 
-def parse_matched_district(text: str, districts: list[str]) -> str | None:
-    for district in districts:
-        if text_contains_any(text, [district]):
-            return district
+DISTRICT_ALIASES: dict[str, list[str]] = {
+    "zoliborz": [
+        "Żoliborz",
+        "Zoliborz",
+        "ZOLIBORZ",
+        "zoliborz",
+        "Жолибож",
+        "жолибож",
+        "Zholiborzh",
+        "zholiborzh",
+    ],
+    "wola": [
+        "Wola",
+        "WOLA",
+        "wola",
+        "Vola",
+        "vola",
+        "Вола",
+        "вола",
+    ],
+    "centrum": [
+        "Centrum",
+        "CENTRUM",
+        "centrum",
+        "Śródmieście",
+        "Srodmiescie",
+        "ŚRÓDMIEŚCIE",
+        "srodmiescie",
+        "Center",
+        "Centre",
+        "CENTER",
+        "centre",
+        "center",
+        "Downtown",
+        "downtown",
+        "Центр",
+        "центр",
+        "Tsentr",
+        "tsentr",
+    ],
+}
+
+CANONICAL_DISTRICTS = {
+    "zoliborz": "Żoliborz",
+    "wola": "Wola",
+    "centrum": "Centrum",
+}
+
+
+def district_group(keyword: str) -> str | None:
+    normalized_keyword = normalize(keyword)
+    for group, aliases in DISTRICT_ALIASES.items():
+        if normalized_keyword == group:
+            return group
+        for alias in aliases:
+            if normalized_keyword == normalize(alias):
+                return group
     return None
+
+
+def expand_districts(districts: list[str]) -> list[str]:
+    expanded: set[str] = set()
+    for district in districts:
+        expanded.add(district)
+        group = district_group(district)
+        if group:
+            expanded.update(DISTRICT_ALIASES[group])
+    return list(expanded)
+
+
+def parse_matched_district(text: str, districts: list[str]) -> str | None:
+    for variant in expand_districts(districts):
+        if not text_contains_any(text, [variant]):
+            continue
+        group = district_group(variant)
+        if group:
+            return CANONICAL_DISTRICTS.get(group, variant)
+        return variant
+    return None
+
+
+def district_match(text: str, districts: list[str]) -> bool:
+    return parse_matched_district(text, districts) is not None
 
 
 def extract_listing_details(text: str, filters: dict) -> dict:
@@ -88,11 +184,4 @@ def extract_listing_details(text: str, filters: dict) -> dict:
 
 
 def text_contains_any(text: str, keywords: list[str]) -> bool:
-    normalized_text = normalize(text)
-    lowered_text = text.lower()
-    for keyword in keywords:
-        if keyword.lower() in lowered_text:
-            return True
-        if normalize(keyword) in normalized_text:
-            return True
-    return False
+    return any(keyword_in_text(text, keyword) for keyword in keywords)
