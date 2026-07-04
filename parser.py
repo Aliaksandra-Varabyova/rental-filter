@@ -111,12 +111,27 @@ DISTRICT_ALIASES: dict[str, list[str]] = {
         "Tsentr",
         "tsentr",
     ],
+    "mokotow": [
+        "Mokotów",
+        "Mokotow",
+        "MOKOTOW",
+        "mokotow",
+        "Mokotowo",
+        "Мокотów",
+        "Мокotów",
+        "Мокотово",
+        "мокotów",
+        "мокотово",
+        "Mokotov",
+        "mokotov",
+    ],
 }
 
 CANONICAL_DISTRICTS = {
     "zoliborz": "Żoliborz",
     "wola": "Wola",
     "centrum": "Centrum",
+    "mokotow": "Mokotów",
 }
 
 

@@ -9,5 +9,6 @@ filters:
     - "Żoliborz"
     - "Wola"
     - "Centrum"
+    - "Mokotów"
 
 lookback_minutes: 60
