@@ -13,4 +13,4 @@ filters:
     - "Śródmieście"
     - "Srodmiescie"
 
-lookback_minutes: 65
+lookback_minutes: 60

@@ -12,6 +12,7 @@ from telethon.tl.types import Channel, DialogFilter
 
 from filter import matches_filters
 from notifier import send_match
+from parser import extract_listing_details
 
 SEEN_IDS_PATH = Path("seen_ids.json")
 CONFIG_PATH = Path("config.yaml")
@@ -101,7 +102,7 @@ async def run() -> None:
     config = load_config()
     folder_name = config["folder"]
     filters = config["filters"]
-    lookback_minutes = config.get("lookback_minutes", 65)
+    lookback_minutes = config.get("lookback_minutes", 60)
 
     seen_ids = load_seen_ids()
     newly_seen: set[str] = set()
@@ -147,6 +148,10 @@ async def run() -> None:
                     text=message.text,
                     channel_name=label,
                     message_link=message_link(channel, message.id),
+                    posted_at=message_date.strftime("%Y-%m-%d %H:%M UTC"),
+                    lookback_minutes=lookback_minutes,
+                    filters=filters,
+                    details=extract_listing_details(message.text, filters),
                 )
                 matches_sent += 1
                 print(f"Sent match from {label}/{message.id}")

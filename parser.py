@@ -57,6 +57,29 @@ def parse_area(text: str) -> float | None:
     return None
 
 
+def parse_matched_district(text: str, districts: list[str]) -> str | None:
+    for district in districts:
+        if text_contains_any(text, [district]):
+            return district
+    return None
+
+
+def extract_listing_details(text: str, filters: dict) -> dict:
+    min_price = filters.get("min_price")
+    max_price = filters.get("max_price")
+    districts = filters.get("districts", [])
+
+    area = parse_area(text)
+    price = parse_price(text, min_price, max_price)
+    district = parse_matched_district(text, districts) if districts else None
+
+    return {
+        "area": area,
+        "price": price,
+        "district": district,
+    }
+
+
 def text_contains_any(text: str, keywords: list[str]) -> bool:
     normalized_text = normalize(text)
     lowered_text = text.lower()
