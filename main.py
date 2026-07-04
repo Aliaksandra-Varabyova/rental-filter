@@ -66,6 +66,42 @@ def filter_title(dialog_filter: DialogFilter) -> str:
     return str(title)
 
 
+def format_skip_details(text: str, filters: dict, reason: str) -> str:
+    details = extract_listing_details(text, filters)
+    preview = " ".join(text.strip().split())
+    if len(preview) > 150:
+        preview = preview[:150] + "..."
+
+    min_price = filters.get("min_price")
+    max_price = filters.get("max_price")
+    min_area = filters.get("min_area")
+    districts = filters.get("districts", [])
+
+    price_label = details["price"] if details["price"] is not None else "not found"
+    area_label = details["area"] if details["area"] is not None else "not found"
+    district_label = details["district"] if details["district"] is not None else "not found"
+
+    if min_price is not None and max_price is not None:
+        price_need = f"{min_price}–{max_price} PLN"
+    elif min_price is not None:
+        price_need = f"min {min_price} PLN"
+    elif max_price is not None:
+        price_need = f"max {max_price} PLN"
+    else:
+        price_need = "any"
+
+    area_need = f"min {min_area} m²" if min_area is not None else "any"
+    district_need = ", ".join(districts) if districts else "any"
+
+    return (
+        f"  Reason: {reason}\n"
+        f"  Price: {price_label} (need {price_need})\n"
+        f"  Area: {area_label} m² (need {area_need})\n"
+        f"  District: {district_label} (need one of: {district_need})\n"
+        f"  Preview: {preview}"
+    )
+
+
 async def get_folder_channels(client: TelegramClient, folder_name: str) -> list[Channel]:
     response = await client(GetDialogFiltersRequest())
     available_folders: list[str] = []
@@ -169,7 +205,9 @@ async def run() -> None:
                 if not is_match:
                     skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
                     channel_skips[reason] = channel_skips.get(reason, 0) + 1
-                    print(f"Skip {label}/{message.id}: {reason}")
+                    print(f"Not sent {label}/{message.id} ({message_date.strftime('%H:%M UTC')}):")
+                    print(format_skip_details(message.text, filters, reason))
+                    print()
                     continue
 
                 await send_match(
