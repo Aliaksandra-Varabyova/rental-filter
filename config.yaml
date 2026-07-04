@@ -1,0 +1,19 @@
+folder: "Rentals"
+
+filters:
+  city:
+    - "Warsaw"
+    - "Warszawa"
+  min_area: 43
+  min_price: 3000
+  max_price: 6500
+  currency: "PLN"
+  districts:
+    - "Żoliborz"
+    - "Zoliborz"
+    - "Wola"
+    - "Centrum"
+    - "Śródmieście"
+    - "Srodmiescie"
+
+lookback_minutes: 65
