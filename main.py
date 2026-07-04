@@ -107,9 +107,20 @@ async def run() -> None:
     seen_ids = load_seen_ids()
     newly_seen: set[str] = set()
     matches_sent = 0
-    messages_checked = 0
+    messages_in_window = 0
+    already_seen_count = 0
+    no_text_count = 0
+    skip_reasons: dict[str, int] = {}
 
-    since = datetime.now(timezone.utc) - timedelta(minutes=lookback_minutes)
+    now = datetime.now(timezone.utc)
+    since = now - timedelta(minutes=lookback_minutes)
+
+    print("=== Rental filter run ===")
+    print(f"Time window: {since.strftime('%Y-%m-%d %H:%M UTC')} → {now.strftime('%Y-%m-%d %H:%M UTC')}")
+    print(f"Lookback: {lookback_minutes} minutes")
+    print(f"Active filters: {filters}")
+    print(f"Previously seen messages stored: {len(seen_ids)}")
+    print()
 
     async with TelegramClient(
         StringSession(session_string),
@@ -117,12 +128,21 @@ async def run() -> None:
         api_hash,
     ) as client:
         channels = await get_folder_channels(client, folder_name)
-        print(f'Found {len(channels)} channels in folder "{folder_name}"')
+        print(f'Found {len(channels)} channels in folder "{folder_name}":')
+        for channel in channels:
+            print(f"  • {channel_label(channel)}")
+        print()
 
         for channel in channels:
             label = channel_label(channel)
+            channel_in_window = 0
+            channel_already_seen = 0
+            channel_matches = 0
+            channel_skips: dict[str, int] = {}
+
             async for message in client.iter_messages(channel, limit=200):
                 if not message.text:
+                    no_text_count += 1
                     continue
 
                 message_date = message.date
@@ -131,14 +151,24 @@ async def run() -> None:
                 if message_date < since:
                     break
 
-                messages_checked += 1
+                messages_in_window += 1
+                channel_in_window += 1
                 dedupe_key = f"{channel.id}:{message.id}"
+
                 if dedupe_key in seen_ids or dedupe_key in newly_seen:
+                    already_seen_count += 1
+                    channel_already_seen += 1
+                    print(
+                        f"Already seen {label}/{message.id} "
+                        f"({message_date.strftime('%H:%M UTC')}) — skipped"
+                    )
                     continue
 
                 newly_seen.add(dedupe_key)
                 is_match, reason = matches_filters(message.text, filters)
                 if not is_match:
+                    skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
+                    channel_skips[reason] = channel_skips.get(reason, 0) + 1
                     print(f"Skip {label}/{message.id}: {reason}")
                     continue
 
@@ -154,13 +184,31 @@ async def run() -> None:
                     details=extract_listing_details(message.text, filters),
                 )
                 matches_sent += 1
-                print(f"Sent match from {label}/{message.id}")
+                channel_matches += 1
+                print(f"✅ Sent match from {label}/{message.id}")
+
+            skip_summary = ", ".join(f"{reason}={count}" for reason, count in channel_skips.items())
+            print(
+                f"Channel {label}: {channel_in_window} in window, "
+                f"{channel_already_seen} already seen, "
+                f"{channel_matches} sent"
+                + (f", skipped: {skip_summary}" if skip_summary else "")
+            )
 
     seen_ids.update(newly_seen)
     save_seen_ids(seen_ids)
-    print(
-        f"Done. Checked {messages_checked} messages, sent {matches_sent} matches."
-    )
+
+    print()
+    print("=== Summary ===")
+    print(f"Messages in last {lookback_minutes} min: {messages_in_window}")
+    print(f"Already seen (from previous runs): {already_seen_count}")
+    print(f"No text (photos only etc.): {no_text_count}")
+    if skip_reasons:
+        print("Filtered out:")
+        for reason, count in sorted(skip_reasons.items()):
+            print(f"  • {reason}: {count}")
+    print(f"Matches sent to Telegram: {matches_sent}")
+    print(f"New messages stored: {len(newly_seen)}")
 
 
 if __name__ == "__main__":
