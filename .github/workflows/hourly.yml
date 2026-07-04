@@ -32,6 +32,9 @@ jobs:
           TG_SESSION: ${{ secrets.TG_SESSION }}
           TG_OUTPUT_CHANNEL: ${{ secrets.TG_OUTPUT_CHANNEL }}
 
+      - run: test -f seen_ids.json || echo '{"ids": []}' > seen_ids.json
+        if: always()
+
       - uses: actions/cache/save@v4
         if: always()
         with:

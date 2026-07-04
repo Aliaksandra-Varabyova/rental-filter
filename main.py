@@ -58,12 +58,24 @@ def channel_label(entity: Channel) -> str:
     return str(entity.id)
 
 
+def filter_title(dialog_filter: DialogFilter) -> str:
+    title = dialog_filter.title
+    if hasattr(title, "text"):
+        return title.text
+    return str(title)
+
+
 async def get_folder_channels(client: TelegramClient, folder_name: str) -> list[Channel]:
     response = await client(GetDialogFiltersRequest())
+    available_folders: list[str] = []
+
     for dialog_filter in response.filters:
         if not isinstance(dialog_filter, DialogFilter):
             continue
-        if dialog_filter.title != folder_name:
+
+        title = filter_title(dialog_filter)
+        available_folders.append(title)
+        if title != folder_name:
             continue
 
         channels: list[Channel] = []
@@ -73,7 +85,10 @@ async def get_folder_channels(client: TelegramClient, folder_name: str) -> list[
                 channels.append(entity)
         return channels
 
-    raise ValueError(f'Folder "{folder_name}" not found on this Telegram account')
+    folders_list = ", ".join(available_folders) or "none"
+    raise ValueError(
+        f'Folder "{folder_name}" not found. Available folders: {folders_list}'
+    )
 
 
 async def run() -> None:
@@ -144,4 +159,11 @@ async def run() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(run())
+    try:
+        asyncio.run(run())
+    except KeyError as error:
+        print(f"Missing environment variable: {error}")
+        raise SystemExit(1) from error
+    except Exception as error:
+        print(f"Error: {error}")
+        raise SystemExit(1) from error
