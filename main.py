@@ -1,5 +1,4 @@
 import asyncio
-import json
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -14,28 +13,12 @@ from filter import matches_filters
 from notifier import send_match
 from parser import extract_listing_details
 
-SEEN_IDS_PATH = Path("seen_ids.json")
 CONFIG_PATH = Path("config.yaml")
 
 
 def load_config() -> dict:
     with CONFIG_PATH.open(encoding="utf-8") as file:
         return yaml.safe_load(file)
-
-
-def load_seen_ids() -> set[str]:
-    if not SEEN_IDS_PATH.exists():
-        return set()
-    data = json.loads(SEEN_IDS_PATH.read_text(encoding="utf-8"))
-    return set(data.get("ids", []))
-
-
-def save_seen_ids(seen_ids: set[str]) -> None:
-    trimmed = sorted(seen_ids)[-5000:]
-    SEEN_IDS_PATH.write_text(
-        json.dumps({"ids": trimmed}, indent=2),
-        encoding="utf-8",
-    )
 
 
 def message_link(entity: Channel, message_id: int) -> str:
@@ -140,11 +123,8 @@ async def run() -> None:
     filters = config["filters"]
     lookback_minutes = config.get("lookback_minutes", 60)
 
-    seen_ids = load_seen_ids()
-    newly_seen: set[str] = set()
     matches_sent = 0
     messages_in_window = 0
-    already_seen_count = 0
     no_text_count = 0
     skip_reasons: dict[str, int] = {}
 
@@ -155,7 +135,6 @@ async def run() -> None:
     print(f"Time window: {since.strftime('%Y-%m-%d %H:%M UTC')} → {now.strftime('%Y-%m-%d %H:%M UTC')}")
     print(f"Lookback: {lookback_minutes} minutes")
     print(f"Active filters: {filters}")
-    print(f"Previously seen messages stored: {len(seen_ids)}")
     print()
 
     async with TelegramClient(
@@ -172,7 +151,6 @@ async def run() -> None:
         for channel in channels:
             label = channel_label(channel)
             channel_in_window = 0
-            channel_already_seen = 0
             channel_matches = 0
             channel_skips: dict[str, int] = {}
 
@@ -189,18 +167,7 @@ async def run() -> None:
 
                 messages_in_window += 1
                 channel_in_window += 1
-                dedupe_key = f"{channel.id}:{message.id}"
 
-                if dedupe_key in seen_ids or dedupe_key in newly_seen:
-                    already_seen_count += 1
-                    channel_already_seen += 1
-                    print(
-                        f"Already seen {label}/{message.id} "
-                        f"({message_date.strftime('%H:%M UTC')}) — skipped"
-                    )
-                    continue
-
-                newly_seen.add(dedupe_key)
                 is_match, reason = matches_filters(message.text, filters)
                 if not is_match:
                     skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
@@ -228,33 +195,16 @@ async def run() -> None:
             skip_summary = ", ".join(f"{reason}={count}" for reason, count in channel_skips.items())
             print(
                 f"Channel {label}: {channel_in_window} in window, "
-                f"{channel_already_seen} already seen, "
                 f"{channel_matches} sent"
-                + (f", skipped: {skip_summary}" if skip_summary else "")
+                + (f", filtered: {skip_summary}" if skip_summary else "")
             )
-
-    seen_ids.update(newly_seen)
-    save_seen_ids(seen_ids)
 
     print()
     print("=== Summary ===")
     print(f"Messages in last {lookback_minutes} min: {messages_in_window}")
-    print(f"Already seen (from previous runs): {already_seen_count}")
     print(f"No text (photos only etc.): {no_text_count}")
     if skip_reasons:
         print("Filtered out:")
         for reason, count in sorted(skip_reasons.items()):
             print(f"  • {reason}: {count}")
     print(f"Matches sent to Telegram: {matches_sent}")
-    print(f"New messages stored: {len(newly_seen)}")
-
-
-if __name__ == "__main__":
-    try:
-        asyncio.run(run())
-    except KeyError as error:
-        print(f"Missing environment variable: {error}")
-        raise SystemExit(1) from error
-    except Exception as error:
-        print(f"Error: {error}")
-        raise SystemExit(1) from error

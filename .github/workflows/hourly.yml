@@ -14,13 +14,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/cache@v4
-        with:
-          path: seen_ids.json
-          key: seen-ids-${{ github.run_id }}
-          restore-keys: |
-            seen-ids-
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -35,9 +28,3 @@ jobs:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_SESSION: ${{ secrets.TG_SESSION }}
           TG_OUTPUT_CHANNEL: ${{ secrets.TG_OUTPUT_CHANNEL }}
-
-      - uses: actions/cache/save@v4
-        if: always()
-        with:
-          path: seen_ids.json
-          key: seen-ids-${{ github.run_id }}
