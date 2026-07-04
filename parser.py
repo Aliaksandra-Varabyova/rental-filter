@@ -1,16 +1,23 @@
 import re
 import unicodedata
 
+METER = r"[mм]"
+SQUARE = r"(?:²|2)"
+CURRENCY = r"(?:zł|zl|zlotych|złotych|pln)"
+
 AREA_PATTERNS = [
-    re.compile(r"(\d+(?:[.,]\d+)?)\s*m²", re.IGNORECASE),
-    re.compile(r"(\d+(?:[.,]\d+)?)\s*m2\b", re.IGNORECASE),
+    re.compile(rf"(\d+(?:[.,]\d+)?)\s*{METER}\s*{SQUARE}", re.IGNORECASE),
+    re.compile(rf"(\d+(?:[.,]\d+)?){METER}{SQUARE}", re.IGNORECASE),
     re.compile(r"(\d+(?:[.,]\d+)?)\s*sqm", re.IGNORECASE),
+    re.compile(r"(\d+(?:[.,]\d+)?)\s*кв\.?\s*м", re.IGNORECASE),
 ]
 
 PRICE_PATTERNS = [
-    re.compile(r"(\d[\d\s.,]*)\s*(?:zł|zl|pln|złotych|zlotych)", re.IGNORECASE),
+    re.compile(rf"(\d[\d\s.,]*)\s*{CURRENCY}", re.IGNORECASE),
+    re.compile(rf"(\d[\d\s.,]+){CURRENCY}", re.IGNORECASE),
+    re.compile(rf"{CURRENCY}\s*(\d[\d\s.,]*)", re.IGNORECASE),
     re.compile(
-        r"(?:czynsz|rent|price|koszt|wynajem)[:\s]*(\d[\d\s.,]*)",
+        r"(?:czynsz|rent|price|koszt|wynajem|цена|стоимость)[:\s]*(\d[\d\s.,]*)",
         re.IGNORECASE,
     ),
     re.compile(r"(\d+(?:[.,]\d+)?)\s*k\b", re.IGNORECASE),
@@ -30,10 +37,10 @@ def _parse_number(value: str) -> int:
 
 def parse_prices(text: str) -> list[int]:
     prices: list[int] = []
-    for pattern in PRICE_PATTERNS[:2]:
+    for pattern in PRICE_PATTERNS[:-1]:
         for match in pattern.finditer(text):
             prices.append(_parse_number(match.group(1)))
-    for match in PRICE_PATTERNS[2].finditer(text):
+    for match in PRICE_PATTERNS[-1].finditer(text):
         prices.append(int(float(match.group(1).replace(",", ".")) * 1000))
     return prices
 
