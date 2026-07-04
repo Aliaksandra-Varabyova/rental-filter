@@ -208,3 +208,14 @@ async def run() -> None:
         for reason, count in sorted(skip_reasons.items()):
             print(f"  • {reason}: {count}")
     print(f"Matches sent to Telegram: {matches_sent}")
+
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(run())
+    except KeyError as error:
+        print(f"Missing environment variable: {error}")
+        raise SystemExit(1) from error
+    except Exception as error:
+        print(f"Error: {error}")
+        raise SystemExit(1) from error

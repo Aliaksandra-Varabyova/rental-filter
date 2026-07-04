@@ -21,8 +21,9 @@ jobs:
       - run: pip install -r requirements.txt
 
       - name: Check rental listings
-        run: python main.py
+        run: python -u main.py
         env:
+          PYTHONUNBUFFERED: "1"
           TG_API_ID: ${{ secrets.TG_API_ID }}
           TG_API_HASH: ${{ secrets.TG_API_HASH }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
